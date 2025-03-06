@@ -1,13 +1,17 @@
 package com.example.redsocial;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -42,7 +46,9 @@ public class HomeFragment extends Fragment {
     String userId;
     PostsAdapter adapter;
     AppViewModel appViewModel;
-    NavController navController; // <-----------------
+    NavController navController;
+
+    Databases databases;// <-----------------
 
     public HomeFragment() {
     }
@@ -55,8 +61,23 @@ public class HomeFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-
         super.onViewCreated(view, savedInstanceState);
+
+        appViewModel = new ViewModelProvider(requireActivity()).get(AppViewModel.class);
+
+        appViewModel.repostUpdated.observe(getViewLifecycleOwner(), repostUpdated -> {
+            if (repostUpdated != null && repostUpdated) {
+                // Volver a cargar los posts
+                obtenerPosts();
+                // Reiniciar el valor del LiveData
+                appViewModel.repostUpdated.setValue(false);
+            }
+        });
+
+
+        client = new Client(requireContext()).setProject(getString(R.string.APPWRITE_PROJECT_ID));
+        account = new Account(client);
+        databases = new Databases(client);
 
         super.onViewCreated(view, savedInstanceState);
         navController = Navigation.findNavController(view);
@@ -67,6 +88,56 @@ public class HomeFragment extends Fragment {
         emailTextView = header.findViewById(R.id.emailTextView);
         client = new Client(requireContext()).setProject(getString(R.string.APPWRITE_PROJECT_ID));
         account = new Account(client);
+
+        ImageView navProfilePhoto = header.findViewById(R.id.imageView); // ImageView del encabezado
+        TextView navDisplayName = header.findViewById(R.id.displayNameTextView);
+        TextView navEmail = header.findViewById(R.id.emailTextView);
+
+
+        try {
+            account.get(new CoroutineCallback<>((result, error) -> {
+                if (error != null) {
+                    error.printStackTrace();
+                    return;
+                }
+
+                // Mostrar el nombre y el correo del usuario
+                requireActivity().runOnUiThread(() -> {
+                    navDisplayName.setText(result.getName());
+                    navEmail.setText(result.getEmail());
+                });
+
+                // Obtener la foto de perfil del usuario desde la colección "profiles"
+                String userId = result.getId();
+                try {
+                    databases.getDocument(
+                            getString(R.string.APPWRITE_DATABASE_ID),
+                            getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
+                            userId, // Usamos el UID como ID del documento
+                            new CoroutineCallback<>((profileResult, profileError) -> {
+                                if (profileError != null) {
+                                    profileError.printStackTrace();
+                                    return;
+                                }
+
+                                // Mostrar la foto de perfil
+                                String photoUrl = profileResult.getData().get("photoUrl").toString();
+                                if (photoUrl != null && !photoUrl.isEmpty()) {
+                                    requireActivity().runOnUiThread(() ->
+                                            Glide.with(requireView()).load(photoUrl).into(navProfilePhoto)
+                                    );
+                                }
+                            })
+                    );
+                } catch (AppwriteException e) {
+                    throw new RuntimeException(e);
+                }
+            }));
+
+        } catch (AppwriteException e) {
+            e.printStackTrace();
+        }
+
         Handler mainHandler = new Handler(Looper.getMainLooper());
         try {
             account.get(new CoroutineCallback<>((result, error) -> {
@@ -130,6 +201,8 @@ public class HomeFragment extends Fragment {
         ImageView authorPhotoImageView, likeImageView, mediaImageView;
         TextView authorTextView, contentTextView, numLikesTextView;
 
+        ImageButton repostButton;
+        Button deleteButton;
         PostViewHolder(@NonNull View itemView) {
             super(itemView);
             authorPhotoImageView = itemView.findViewById(R.id.authorPhotoImageView);
@@ -138,6 +211,8 @@ public class HomeFragment extends Fragment {
             authorTextView = itemView.findViewById(R.id.authorTextView);
             contentTextView = itemView.findViewById(R.id.contentTextView);
             numLikesTextView = itemView.findViewById(R.id.numLikesTextView);
+            deleteButton = itemView.findViewById(R.id.deleteButton);
+            repostButton = itemView.findViewById(R.id.repostButton);
         }
     }
 
@@ -156,8 +231,34 @@ public class HomeFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
-            Map<String, Object> post =
-                    lista.getDocuments().get(position).getData();
+            Map<String, Object> post = lista.getDocuments().get(position).getData();
+            String authorPhotoUrl = post.get("authorPhotoUrl") != null ? post.get("authorPhotoUrl").toString() : null;
+
+
+            if (authorPhotoUrl != null && !authorPhotoUrl.isEmpty()) {
+                Glide.with(getContext()).load(authorPhotoUrl).circleCrop().into(holder.authorPhotoImageView);
+            } else {
+                holder.authorPhotoImageView.setImageResource(R.drawable.user);
+            }
+
+            String postAuthorId = post.get("uid").toString();
+            String author = post.get("author").toString();
+            String content = post.get("content").toString();
+            String mediaUrl = post.get("mediaUrl") != null ? post.get("mediaUrl").toString() : null;
+            String mediaType = post.get("mediaType") != null ? post.get("mediaType").toString() : null;
+
+
+            holder.repostButton.setOnClickListener(view -> {
+                repostearPublicacion(author, content, mediaUrl, mediaType);
+            });
+
+            if (postAuthorId.equals(userId)){
+                holder.deleteButton.setVisibility(View.VISIBLE);
+                holder.deleteButton.setOnClickListener(v -> eliminarPost(post.get("$id").toString()));
+            } else {
+                holder.deleteButton.setVisibility(View.GONE);
+            }
+
             if (post.get("authorPhotoUrl") == null) {
                 holder.authorPhotoImageView.setImageResource(R.drawable.user);
             } else {
@@ -226,6 +327,87 @@ public class HomeFragment extends Fragment {
                 holder.mediaImageView.setVisibility(View.GONE);
             }
 
+        }
+        void eliminarPost(String postId) {
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Eliminar post")
+                    .setMessage("¿Estás seguro de que quieres eliminar este post?")
+                    .setPositiveButton("Sí", (dialog, which) -> {
+                        Databases databases = new Databases(client);
+                        databases.deleteDocument(
+                                getString(R.string.APPWRITE_DATABASE_ID),  // ID de la base de datos
+                                getString(R.string.APPWRITE_POSTS_COLLECTION_ID),  // ID de la colección de posts
+                                postId,  // ID del post a eliminar
+                                new CoroutineCallback<>((result, error) -> {
+                                    if (error != null) {
+                                        error.printStackTrace();
+                                        Snackbar.make(requireView(), "Error al eliminar", Snackbar.LENGTH_LONG).show();
+                                        return;
+                                    }
+                                    Snackbar.make(requireView(), "Post eliminado", Snackbar.LENGTH_SHORT).show();
+                                    obtenerPosts(); // Refrescar lista de posts después de eliminar
+                                })
+                        );
+                    })
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+        }
+
+        private void repostearPublicacion(String author, String originalContent, String mediaUrl, String mediaType) {
+            try {
+                account.get(new CoroutineCallback<>((result, error) -> {
+                    if (error != null) {
+                        error.printStackTrace();
+                        return;
+                    }
+
+                    String currentUserId = result.getId();
+                    String currentUserName = result.getName();
+
+                    // Crear el contenido de la publicación reposteada
+                    String repostContent = "Reposteado de @" + author + ": " + originalContent;
+
+                    // Crear el mapa de datos para la nueva publicación
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("uid", currentUserId);
+                    data.put("author", currentUserName);
+                    data.put("content", repostContent);
+                    data.put("authorPhotoUrl", null); // Puedes agregar la URL de la foto del usuario si la tienes
+                    data.put("likes", new ArrayList<>()); // Inicializar la lista de likes vacía
+                    data.put("mediaUrl", mediaUrl); // Incluir el mediaUrl original
+                    data.put("mediaType", mediaType); // Incluir el mediaType original
+
+                    // Subir la nueva publicación a Appwrite
+                    Databases databases = new Databases(client);
+                    try {
+                        databases.createDocument(
+                                getString(R.string.APPWRITE_DATABASE_ID),
+                                getString(R.string.APPWRITE_POSTS_COLLECTION_ID),
+                                "unique()", // Generar un ID único automáticamente
+                                data,
+                                new ArrayList<>(), // Permisos opcionales
+                                new CoroutineCallback<>((result2, error2) -> {
+                                    if (error2 != null) {
+                                        error2.printStackTrace();
+                                        return;
+                                    }
+
+                                    // Notificar al ViewModel que se ha realizado un reposteo
+                                    appViewModel.repostUpdated.postValue(true);
+
+                                    // Notificar al usuario que la publicación se ha reposteado
+                                    requireActivity().runOnUiThread(() ->
+                                            Toast.makeText(requireContext(), "Reposteado con éxito", Toast.LENGTH_SHORT).show()
+                                    );
+                                })
+                        );
+                    } catch (AppwriteException e) {
+                        e.printStackTrace();
+                    }
+                }));
+            } catch (AppwriteException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override

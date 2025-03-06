@@ -11,6 +11,7 @@ import java.util.Map;
 
 public class AppViewModel extends AndroidViewModel
 {
+
     public static class Media {
         public Uri uri;
         public String tipo;
@@ -23,6 +24,9 @@ public class AppViewModel extends AndroidViewModel
             MutableLiveData<>();
     public MutableLiveData<Media> mediaSeleccionado = new
             MutableLiveData<>();
+
+    public MutableLiveData<Boolean> repostUpdated = new MutableLiveData<>();
+
     public AppViewModel(@NonNull Application application) {
         super(application);
     }

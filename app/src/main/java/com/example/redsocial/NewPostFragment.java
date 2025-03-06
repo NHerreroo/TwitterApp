@@ -44,6 +44,7 @@ import java.util.Map;
 import io.appwrite.Client;
 import io.appwrite.coroutines.CoroutineCallback;
 import io.appwrite.exceptions.AppwriteException;
+import io.appwrite.models.Document;
 import io.appwrite.models.InputFile;
 import io.appwrite.models.User;
 import io.appwrite.services.Account;
@@ -51,7 +52,7 @@ import io.appwrite.services.Databases;
 import io.appwrite.services.Storage;
 
 public class NewPostFragment extends Fragment {
-
+    Databases databases;
     Uri mediaUri;
     String mediaTipo;
     Button publishButton;
@@ -86,6 +87,7 @@ public class NewPostFragment extends Fragment {
             }
 
         });
+        databases = new Databases(client);
 
         appViewModel = new ViewModelProvider(requireActivity()).get(AppViewModel.class);
         view.findViewById(R.id.camara_fotos).setOnClickListener(v ->
@@ -117,30 +119,81 @@ public class NewPostFragment extends Fragment {
             return;
         }
         publishButton.setEnabled(false);
-// Obtenemos información de la cuenta del autor
+
+        // Obtener información de la cuenta del autor
         account = new Account(client);
         try {
             account.get(new CoroutineCallback<>((result, error) -> {
-                if (error != null) {
-                    error.printStackTrace();
-                    return;
-                }
-                if (mediaTipo == null) {
-                    guardarEnAppWrite(result, postContent, null);
-                }
-                else
-                {
-                    pujaIguardarEnAppWrite(result, postContent);
+                if (error != null) return;
+
+                String currentUserId = result.getId();
+                databases = new Databases(client); // Inicializar databases
+
+                try {
+                    databases.getDocument(
+                            getString(R.string.APPWRITE_DATABASE_ID),
+                            getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
+                            currentUserId,
+                            new CoroutineCallback<>((profileResult, profileError) -> {
+                                if (profileError != null) {
+                                    crearPerfilUsuario(currentUserId);
+                                    return;
+                                }
+
+                                String authorPhotoUrl = obtenerPhotoUrl(profileResult);
+
+                                if (mediaTipo == null) {
+                                    guardarEnAppWrite(result, postContent, null, authorPhotoUrl);
+                                } else {
+                                    pujaIguardarEnAppWrite(result, postContent, authorPhotoUrl);
+                                }
+                            })
+                    );
+                } catch (AppwriteException e) {
+                    throw new RuntimeException(e);
                 }
             }));
         } catch (AppwriteException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
-    void guardarEnAppWrite(User<Map<String, Object>> user, String content, String mediaUrl)
-    {
+    private String obtenerPhotoUrl(Document profileResult) {
+        if (profileResult == null) return ""; // Primero verificar si el documento es nulo
+
+        Map<String, Object> data = (Map<String, Object>) profileResult.getData();
+        if (data == null || !data.containsKey("photoUrl")) return "";
+
+        Object photoUrlObj = data.get("photoUrl");
+        return (photoUrlObj != null) ? photoUrlObj.toString() : "";
+    }
+
+    private void crearPerfilUsuario(String userId) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("uid", userId);
+        data.put("photoUrl", "");
+
+        try {
+            databases.createDocument(
+                    getString(R.string.APPWRITE_DATABASE_ID),
+                    getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
+                    userId,
+                    data,
+                    new ArrayList<>(),
+                    new CoroutineCallback<>((result, error) -> {
+                        if (error == null) {
+                            publicar(); // Reintentar después de crear el perfil
+                        }
+                    })
+            );
+        } catch (AppwriteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void guardarEnAppWrite(User<Map<String, Object>> user, String content, String mediaUrl, String authorPhotoUrl) {
         Handler mainHandler = new Handler(Looper.getMainLooper());
+
         // Crear instancia del servicio Databases
         Databases databases = new Databases(client);
 
@@ -148,7 +201,7 @@ public class NewPostFragment extends Fragment {
         Map<String, Object> data = new HashMap<>();
         data.put("uid", user.getId().toString());
         data.put("author", user.getName().toString());
-        data.put("authorPhotoUrl", null);
+        data.put("authorPhotoUrl", authorPhotoUrl); // Incluir la URL de la foto de perfil
         data.put("content", content);
         data.put("mediaType", mediaTipo);
         data.put("mediaUrl", mediaUrl);
@@ -160,7 +213,7 @@ public class NewPostFragment extends Fragment {
                     getString(R.string.APPWRITE_POSTS_COLLECTION_ID),
                     "unique()", // Generar un ID único automáticamente
                     data,
-                    new ArrayList<>(), // Permisos opcionales, como ["role:all"]
+                    new ArrayList<>(), // Permisos opcionales
                     new CoroutineCallback<>((result, error) -> {
                         if (error != null) {
                             Snackbar.make(requireView(), "Error: " +
@@ -168,8 +221,7 @@ public class NewPostFragment extends Fragment {
                         } else {
                             System.out.println("Post creado:" +
                                     result.toString());
-                            mainHandler.post(() ->
-                            {
+                            mainHandler.post(() -> {
                                 navController.popBackStack();
                             });
                         }
@@ -249,9 +301,7 @@ public class NewPostFragment extends Fragment {
                 Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION));
     }
 
-    private void pujaIguardarEnAppWrite(User<Map<String, Object>> user, final String
-            postText)
-    {
+    private void pujaIguardarEnAppWrite(User<Map<String, Object>> user, final String postText, String authorPhotoUrl) {
         Handler mainHandler = new Handler(Looper.getMainLooper());
         Storage storage = new Storage(client);
         File tempFile = null;
@@ -268,7 +318,7 @@ public class NewPostFragment extends Fragment {
                 new CoroutineCallback<>((result, error) -> {
                     if (error != null) {
                         System.err.println("Error subiendo el archivo:" +
-                                error.getMessage() );
+                                error.getMessage());
                         return;
                     }
                     String downloadUrl =
@@ -276,9 +326,8 @@ public class NewPostFragment extends Fragment {
                                     getString(R.string.APPWRITE_STORAGE_BUCKET_ID) + "/files/" + result.getId() +
                                     "/view?project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&project=" +
                                     getString(R.string.APPWRITE_PROJECT_ID) + "&mode=admin";
-                    mainHandler.post(() ->
-                    {
-                        guardarEnAppWrite(user, postText, downloadUrl);
+                    mainHandler.post(() -> {
+                        guardarEnAppWrite(user, postText, downloadUrl, authorPhotoUrl);
                     });
                 })
         );

@@ -10,12 +10,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="10dp">
+
         <ImageView
             android:id="@+id/authorPhotoImageView"
             android:layout_width="60dp"
             android:layout_height="wrap_content"
             android:adjustViewBounds="true"
             app:srcCompat="@drawable/user" />
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -63,7 +65,25 @@
                     android:layout_gravity="center_vertical"
                     android:text="200K"/>
 
+                <ImageButton
+                    android:id="@+id/repostButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@android:drawable/ic_menu_revert"
+                    android:contentDescription="Repostear"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#01AE13" />
+
+
             </LinearLayout>
+
         </LinearLayout>
+
+        <Button
+            android:id="@+id/deleteButton"
+            android:layout_width="20dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:text="DELETE" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>
