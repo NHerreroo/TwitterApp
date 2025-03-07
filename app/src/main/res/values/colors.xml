@@ -1,10 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Cockatiel-inspired color palette for light mode with more variety -->
+    <color name="dark">#FFFFFF</color>               <!-- White background (like cockatiel's white patches) -->
+    <color name="dark_gray">#EDEDED</color>          <!-- Very light gray (like cockatiel's light gray feathers) -->
+    <color name="medium_gray">#E0E0E0</color>        <!-- Light gray (like cockatiel's silver body) -->
+    <color name="cockatiel_gray">#9E9E9E</color>     <!-- Medium gray (like cockatiel's wing tips) -->
+    <color name="light_gray">#616161</color>         <!-- Darker gray for text (for contrast) -->
+    <color name="cockatiel_yellow">#DC8800</color>   <!-- Soft yellow (like cockatiel's cheek patches) -->
+    <color name="cockatiel_orange">#FF9800</color>   <!-- Orange (like cockatiel's ear spots) -->
+    <color name="cockatiel_orange_20">#33FF9800</color> <!-- Transparent orange for effects -->
+    <color name="white">#212121</color>              <!-- Dark gray/almost black for text (for contrast) -->
+
+    <!-- Additional cockatiel-inspired colors -->
+    <color name="cockatiel_red">#F44336</color>      <!-- Soft red (like cockatiel's ear spots) -->
+    <color name="cockatiel_dark_gray">#757575</color> <!-- Darker gray (like cockatiel's tail feathers) -->
+    <color name="cockatiel_light_yellow">#FFF9C4</color> <!-- Very light yellow (like cockatiel's crest) -->
+    <color name="cockatiel_cream">#FFECB3</color>    <!-- Cream color (like cockatiel's face) -->
+    <color name="cockatiel_charcoal">#424242</color> <!-- Charcoal (like cockatiel's dark markings) -->
+
+    <!-- System colors -->
     <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <color name="purple_500">#FFC107</color>         <!-- Changed to match cockatiel yellow for consistency -->
+    <color name="purple_700">#F57C00</color>         <!-- Changed to darker orange for app bar -->
+    <color name="teal_200">#80CBC4</color>           <!-- Changed to a softer teal -->
+    <color name="teal_700">#00796B</color>           <!-- Kept as accent color option -->
     <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
 </resources>
