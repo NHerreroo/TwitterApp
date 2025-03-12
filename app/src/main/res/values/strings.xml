@@ -20,5 +20,7 @@
 
     <string name="APPWRITE_PROFILES_COLLECTION_ID">67c9cd7d002323ee04c5</string>
 
+    <string name="APPWRITE_COMMENTS_COLLECTION_ID">67d1c679000469265d62</string>
+
     <string name="APPWRITE_STORAGE_BUCKET_ID">67b77b5b0004d2cae05a</string>
 </resources>

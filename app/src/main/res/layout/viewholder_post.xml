@@ -86,6 +86,19 @@
 
             <!-- Like Button and Count -->
             <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/commentButton"
+                    android:layout_width="75dp"
+                    android:layout_height="wrap_content"
+                    android:text="Comentar" />
+            </LinearLayout
+            >
+
+            <LinearLayout
                 android:id="@+id/likeLinearLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

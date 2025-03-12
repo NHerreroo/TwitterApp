@@ -1,5 +1,6 @@
 package com.example.redsocial;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Handler;
@@ -176,6 +177,9 @@ public class HomeFragment extends Fragment {
         ImageButton repostButton;
         Button deleteButton;
 
+        Button commentButton;
+
+        @SuppressLint("WrongViewCast")
         PostViewHolder(@NonNull View itemView) {
             super(itemView);
             authorPhotoImageView = itemView.findViewById(R.id.authorPhotoImageView);
@@ -186,6 +190,7 @@ public class HomeFragment extends Fragment {
             numLikesTextView = itemView.findViewById(R.id.numLikesTextView);
             deleteButton = itemView.findViewById(R.id.deleteButton);
             repostButton = itemView.findViewById(R.id.repostButton);
+            commentButton = itemView.findViewById(R.id.commentButton);
         }
     }
 
@@ -279,6 +284,12 @@ public class HomeFragment extends Fragment {
             } else {
                 holder.mediaImageView.setVisibility(View.GONE);
             }
+
+            holder.commentButton.setOnClickListener(view -> {
+                Bundle bundle = new Bundle();
+                bundle.putString("postId", post.get("$id").toString());
+                navController.navigate(R.id.commentsFragment, bundle);
+            });
         }
 
         void eliminarPost(String postId) {
