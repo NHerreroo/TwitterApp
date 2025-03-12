@@ -6,8 +6,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -38,7 +39,8 @@ import io.appwrite.services.Storage;
 public class ProfileFragment extends Fragment {
 
     ImageView photoImageView;
-    Button changeProfilePhotoButton;
+    FloatingActionButton changeProfilePhotoButton;
+    TextView displayNameTextView, emailTextView;
     Client client;
     Account account;
     Storage storage;
@@ -56,6 +58,8 @@ public class ProfileFragment extends Fragment {
 
         photoImageView = view.findViewById(R.id.photoImageView);
         changeProfilePhotoButton = view.findViewById(R.id.changeProfilePhotoButton);
+        displayNameTextView = view.findViewById(R.id.displayNameTextView);
+        emailTextView = view.findViewById(R.id.emailTextView);
 
         // Inicializar Appwrite
         client = new Client(requireContext()).setProject(getString(R.string.APPWRITE_PROJECT_ID));
@@ -80,22 +84,26 @@ public class ProfileFragment extends Fragment {
 
                 userId = result.getId();
 
-                // Obtener el perfil del usuario desde la colección "profiles"
+                // Mostrar nombre y correo
+                requireActivity().runOnUiThread(() -> {
+                    displayNameTextView.setText(result.getName());
+                    emailTextView.setText(result.getEmail());
+                });
+
+                // Obtener la foto de perfil desde "profiles"
                 try {
                     databases.getDocument(
                             getString(R.string.APPWRITE_DATABASE_ID),
                             getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
-                            userId, // Usamos el UID como ID del documento
+                            userId,
                             new CoroutineCallback<>((profileResult, profileError) -> {
                                 if (profileError != null) {
-                                    // Si no existe un perfil, creamos uno nuevo
                                     crearPerfilUsuario();
                                     return;
                                 }
 
-                                // Mostrar la foto de perfil
                                 String photoUrl = profileResult.getData().get("photoUrl").toString();
-                                if (photoUrl != null && !photoUrl.isEmpty()) {
+                                if (!photoUrl.isEmpty()) {
                                     requireActivity().runOnUiThread(() ->
                                             Glide.with(requireView()).load(photoUrl).into(photoImageView)
                                     );
@@ -103,8 +111,9 @@ public class ProfileFragment extends Fragment {
                             })
                     );
                 } catch (AppwriteException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
                 }
+
             }));
         } catch (AppwriteException e) {
             e.printStackTrace();
@@ -114,13 +123,13 @@ public class ProfileFragment extends Fragment {
     private void crearPerfilUsuario() {
         Map<String, Object> data = new HashMap<>();
         data.put("uid", userId);
-        data.put("photoUrl", ""); // Inicialmente no hay foto de perfil
+        data.put("photoUrl", ""); // Inicialmente no hay foto
 
         try {
             databases.createDocument(
                     getString(R.string.APPWRITE_DATABASE_ID),
                     getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
-                    userId, // Usamos el UID como ID del documento
+                    userId,
                     data,
                     new ArrayList<>(),
                     new CoroutineCallback<>((result, error) -> {
@@ -171,13 +180,11 @@ public class ProfileFragment extends Fragment {
                         return;
                     }
 
-                    // Obtener la URL de la imagen subida
                     String downloadUrl = "https://cloud.appwrite.io/v1/storage/buckets/"
                             + getString(R.string.APPWRITE_STORAGE_BUCKET_ID)
                             + "/files/" + result.getId()
                             + "/view?project=" + getString(R.string.APPWRITE_PROJECT_ID);
 
-                    // Actualizar la foto de perfil en la colección "profiles"
                     actualizarFotoPerfil(downloadUrl);
                 })
         );
@@ -191,7 +198,7 @@ public class ProfileFragment extends Fragment {
             databases.updateDocument(
                     getString(R.string.APPWRITE_DATABASE_ID),
                     getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
-                    userId, // Usamos el UID como ID del documento
+                    userId,
                     data,
                     new ArrayList<>(),
                     new CoroutineCallback<>((result, error) -> {
@@ -203,7 +210,6 @@ public class ProfileFragment extends Fragment {
                             return;
                         }
 
-                        // Mostrar la nueva foto de perfil
                         requireActivity().runOnUiThread(() -> {
                             Glide.with(requireView()).load(photoUrl).into(photoImageView);
                             Toast.makeText(requireContext(), "Foto de perfil actualizada", Toast.LENGTH_SHORT).show();
@@ -221,8 +227,7 @@ public class ProfileFragment extends Fragment {
             throw new FileNotFoundException("No se pudo abrir el URI: " + uri);
         }
 
-        String fileName = "temp_file";
-        File tempFile = new File(context.getCacheDir(), fileName);
+        File tempFile = new File(context.getCacheDir(), "temp_file");
         FileOutputStream outputStream = new FileOutputStream(tempFile);
         byte[] buffer = new byte[1024];
         int length;

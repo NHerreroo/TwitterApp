@@ -49,7 +49,21 @@ public class CommentsFragment extends Fragment {
 
         postId = getArguments().getString("postId");
 
-        // Obtener el UID del usuario actual
+        EditText commentInput = view.findViewById(R.id.commentInput);
+        Button sendButton = view.findViewById(R.id.sendCommentButton);
+
+        // Configurar el listener para el botón de comentar
+        sendButton.setOnClickListener(v -> {
+            String content = commentInput.getText().toString().trim();
+            if (!content.isEmpty()) {
+                publicarComentario(content); // Llamar a la función para publicar el comentario
+                commentInput.setText(""); // Limpiar el campo de texto después de publicar
+            } else {
+                Toast.makeText(getContext(), "Escribe un comentario", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Obtener UID y configurar adaptador
         Account account = new Account(client);
         try {
             account.get(new CoroutineCallback<>((user, error) -> {
@@ -70,6 +84,7 @@ public class CommentsFragment extends Fragment {
             throw new RuntimeException(e);
         }
     }
+
 
     private void obtenerComentarios() {
         try {
@@ -103,56 +118,76 @@ public class CommentsFragment extends Fragment {
         Account account = new Account(client);
 
         try {
-            // Obtener información del usuario autenticado
             account.get(new CoroutineCallback<>((user, error) -> {
                 requireActivity().runOnUiThread(() -> {
-                    if (error != null) {
-                        Toast.makeText(getContext(), "Error al obtener el usuario: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                        error.printStackTrace();
+                    if (error != null || user == null) {
+                        Toast.makeText(getContext(), "Error al obtener el usuario: " + error.getMessage(), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
                     String uid = user.getId();
                     String autor = user.getName();
 
-                    // Ahora creamos el comentario con los datos del usuario
-                    Map<String, Object> data = new HashMap<>();
-                    data.put("postId", postId);
-                    data.put("content", content);
-                    data.put("autor", autor);
-                    data.put("uid", uid);
+                    // Buscar el perfil del usuario por su UID en la colección PROFILES
+                    List<String> queries = List.of(Query.Companion.equal("uid", uid));
 
                     try {
-                        databases.createDocument(
+                        databases.listDocuments(
                                 getString(R.string.APPWRITE_DATABASE_ID),
-                                getString(R.string.APPWRITE_COMMENTS_COLLECTION_ID),
-                                "unique()",
-                                data,
-                                new ArrayList<>(),
-                                new CoroutineCallback<>((result, commentError) -> {
+                                getString(R.string.APPWRITE_PROFILES_COLLECTION_ID),
+                                queries,
+                                new CoroutineCallback<>((profilesResult, profileError) -> {
                                     requireActivity().runOnUiThread(() -> {
-                                        if (commentError == null) {
-                                            obtenerComentarios(); // Refrescar comentarios
-                                            Toast.makeText(getContext(), "Comentario publicado", Toast.LENGTH_SHORT).show();
+                                        String photoUrl = "";
+
+                                        if (profileError == null && profilesResult.getDocuments().size() > 0) {
+                                            photoUrl = profilesResult.getDocuments().get(0).getData().get("photoUrl").toString();
                                         } else {
-                                            Toast.makeText(getContext(), "Error al comentar: " + commentError.getMessage(), Toast.LENGTH_LONG).show();
-                                            commentError.printStackTrace();
+                                            Toast.makeText(getContext(), "No se encontró el perfil del usuario o no tiene foto", Toast.LENGTH_LONG).show();
+                                        }
+
+                                        // Crear el comentario con la foto de perfil
+                                        Map<String, Object> data = new HashMap<>();
+                                        data.put("postId", postId);
+                                        data.put("content", content);
+                                        data.put("autor", autor);
+                                        data.put("uid", uid);
+                                        data.put("authorPhotoUrl", photoUrl);
+
+                                        try {
+                                            databases.createDocument(
+                                                    getString(R.string.APPWRITE_DATABASE_ID),
+                                                    getString(R.string.APPWRITE_COMMENTS_COLLECTION_ID),
+                                                    "unique()",
+                                                    data,
+                                                    new ArrayList<>(),
+                                                    new CoroutineCallback<>((result, commentError) -> {
+                                                        requireActivity().runOnUiThread(() -> {
+                                                            if (commentError == null) {
+                                                                obtenerComentarios(); // Refrescar comentarios
+                                                                Toast.makeText(getContext(), "Comentario publicado", Toast.LENGTH_SHORT).show();
+                                                            } else {
+                                                                Toast.makeText(getContext(), "Error al comentar: " + commentError.getMessage(), Toast.LENGTH_LONG).show();
+                                                            }
+                                                        });
+                                                    })
+                                            );
+                                        } catch (AppwriteException e) {
+                                            e.printStackTrace();
                                         }
                                     });
                                 })
                         );
                     } catch (AppwriteException e) {
-                        e.printStackTrace();
-                        Toast.makeText(getContext(), "Error al crear comentario: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        throw new RuntimeException(e);
                     }
                 });
             }));
         } catch (AppwriteException e) {
             e.printStackTrace();
-            requireActivity().runOnUiThread(() ->
-                    Toast.makeText(getContext(), "Error al obtener usuario: " + e.getMessage(), Toast.LENGTH_LONG).show()
-            );
         }
     }
 
 }
+
+
