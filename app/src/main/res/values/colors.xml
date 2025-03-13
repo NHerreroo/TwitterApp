@@ -22,7 +22,7 @@
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FFC107</color>         <!-- Changed to match cockatiel yellow for consistency -->
     <color name="purple_700">#F57C00</color>         <!-- Changed to darker orange for app bar -->
-    <color name="teal_200">#80CBC4</color>           <!-- Changed to a softer teal -->
+    <color name="teal_200">#F44336</color>           <!-- Changed to a softer teal -->
     <color name="teal_700">#00796B</color>           <!-- Kept as accent color option -->
     <color name="black">#FF000000</color>
 </resources>

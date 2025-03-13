@@ -63,6 +63,7 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+
         appViewModel = new ViewModelProvider(requireActivity()).get(AppViewModel.class);
 
         appViewModel.repostUpdated.observe(getViewLifecycleOwner(), repostUpdated -> {
@@ -200,6 +201,7 @@ public class HomeFragment extends Fragment {
         @NonNull
         @Override
         public PostViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+
             return new PostViewHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.viewholder_post, parent, false));
         }
 
