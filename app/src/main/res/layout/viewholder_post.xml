@@ -7,15 +7,13 @@
     android:layout_height="wrap_content"
     app:cardUseCompatPadding="true"
     app:cardBackgroundColor="@color/dark_gray"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
-    >
+    app:cardCornerRadius="16dp"
+    app:cardElevation="3dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp"
-        >
+        android:padding="16dp">
 
         <!-- Author Photo -->
         <com.google.android.material.imageview.ShapeableImageView
@@ -49,10 +47,11 @@
             android:id="@+id/contentTextView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="6dp"
             android:text="Tweet content goes here"
             android:textColor="@color/white"
             android:textSize="16sp"
+            android:lineSpacingExtra="4dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@+id/authorTextView"
             app:layout_constraintTop_toBottomOf="@+id/authorTextView" />
@@ -73,42 +72,55 @@
             app:shapeAppearanceOverlay="@style/RoundedImageView"
             tools:visibility="visible" />
 
+        <!-- Post Date -->
+        <TextView
+            android:id="@+id/postDateTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Fecha"
+            android:textSize="12sp"
+            android:textColor="#888888"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/mediaImage"
+            android:layout_marginTop="12dp"/>
+
         <!-- Interaction Bar -->
         <LinearLayout
             android:id="@+id/interactionBar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal"
+            android:gravity="center_vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@+id/contentTextView"
-            app:layout_constraintTop_toBottomOf="@+id/mediaImage">
+            app:layout_constraintTop_toBottomOf="@+id/postDateTextView">
+
+            <!-- Comment Button -->
+            <Button
+                android:id="@+id/commentButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="Comentar"
+                android:textSize="12sp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:background="@drawable/rounded_button_bg"
+                android:textColor="@color/white"
+                android:layout_marginEnd="16dp"/>
 
             <!-- Like Button and Count -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/commentButton"
-                    android:layout_width="75dp"
-                    android:layout_height="wrap_content"
-                    android:text="Comentar" />
-            </LinearLayout
-            >
-
             <LinearLayout
                 android:id="@+id/likeLinearLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="24dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:padding="4dp">
+                android:padding="4dp"
+                android:layout_marginEnd="16dp">
 
                 <ImageView
                     android:id="@+id/likeImageView"
@@ -148,7 +160,6 @@
                     android:src="@android:drawable/ic_menu_revert"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Repost" />
-
             </LinearLayout>
         </LinearLayout>
 
@@ -157,7 +168,7 @@
             android:id="@+id/deleteButton"
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="32dp"
+            android:layout_height="36dp"
             android:minWidth="0dp"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"

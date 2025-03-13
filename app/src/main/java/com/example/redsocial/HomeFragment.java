@@ -2,6 +2,7 @@ package com.example.redsocial;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,12 +27,17 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import io.appwrite.Client;
+import io.appwrite.Query;
 import io.appwrite.coroutines.CoroutineCallback;
 import io.appwrite.exceptions.AppwriteException;
 import io.appwrite.models.DocumentList;
@@ -160,13 +166,21 @@ public class HomeFragment extends Fragment {
         Databases databases = new Databases(client);
         Handler mainHandler = new Handler(Looper.getMainLooper());
         try {
-            databases.listDocuments(getString(R.string.APPWRITE_DATABASE_ID), getString(R.string.APPWRITE_POSTS_COLLECTION_ID), new ArrayList<>(), new CoroutineCallback<>((result, error) -> {
-                if (error != null) {
-                    Snackbar.make(requireView(), "Error al obtener los posts: " + error.toString(), Snackbar.LENGTH_LONG).show();
-                    return;
-                }
-                mainHandler.post(() -> adapter.establecerLista(result));
-            }));
+            List<String> queries = List.of(
+                    Query.Companion.orderDesc("$createdAt") // Orden descendente por fecha de creación
+            );
+            databases.listDocuments(
+                    getString(R.string.APPWRITE_DATABASE_ID),
+                    getString(R.string.APPWRITE_POSTS_COLLECTION_ID),
+                    queries,
+                    new CoroutineCallback<>((result, error) -> {
+                        if (error != null) {
+                            Snackbar.make(requireView(), "Error al obtener los posts: " + error.toString(), Snackbar.LENGTH_LONG).show();
+                            return;
+                        }
+                        mainHandler.post(() -> adapter.establecerLista(result));
+                    })
+            );
         } catch (AppwriteException e) {
             throw new RuntimeException(e);
         }
@@ -180,6 +194,10 @@ public class HomeFragment extends Fragment {
 
         Button commentButton;
 
+        TextView postDateTextView;
+
+
+
         @SuppressLint("WrongViewCast")
         PostViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -192,6 +210,7 @@ public class HomeFragment extends Fragment {
             deleteButton = itemView.findViewById(R.id.deleteButton);
             repostButton = itemView.findViewById(R.id.repostButton);
             commentButton = itemView.findViewById(R.id.commentButton);
+            postDateTextView = itemView.findViewById(R.id.postDateTextView);
         }
     }
 
@@ -212,6 +231,7 @@ public class HomeFragment extends Fragment {
             // Manejo de la foto de perfil del autor
             Object photoUrlObj = post.get("authorPhotoUrl");
             String authorPhotoUrl = (photoUrlObj != null) ? photoUrlObj.toString() : "";
+            String createdAt = post.get("$createdAt").toString();
 
             if (!authorPhotoUrl.isEmpty()) {
                 Glide.with(getContext()).load(authorPhotoUrl).circleCrop().error(R.drawable.user).placeholder(R.drawable.user).into(holder.authorPhotoImageView);
@@ -292,6 +312,29 @@ public class HomeFragment extends Fragment {
                 bundle.putString("postId", post.get("$id").toString());
                 navController.navigate(R.id.commentsFragment, bundle);
             });
+
+            try {
+                Instant instant = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    instant = Instant.parse(createdAt);
+                }
+                ZonedDateTime zonedDateTime = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    zonedDateTime = instant.atZone(ZoneId.systemDefault());
+                }
+                DateTimeFormatter formatter = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                }
+                String formattedDate = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    formattedDate = formatter.format(zonedDateTime);
+                }
+
+                holder.postDateTextView.setText(formattedDate);
+            } catch (Exception e) {
+                holder.postDateTextView.setText("Fecha desconocida");
+            }
         }
 
         void eliminarPost(String postId) {
